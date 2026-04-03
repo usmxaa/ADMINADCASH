@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Site Settings | Master Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0a0d15; color: white; font-family: 'Inter', sans-serif; }
+        .config-card { background: #1e2632; border: 1px solid #313d4f; border-radius: 30px; padding: 25px; transition: 0.3s; }
+        .config-card:focus-within { border-color: #00e676; box-shadow: 0 0 20px rgba(0, 230, 118, 0.1); }
+        input { background: #131924; border: 1px solid #313d4f; color: white; border-radius: 12px; padding: 12px; outline: none; width: 100%; font-weight: bold; }
+    </style>
+</head>
+<body class="p-6 md:p-12">
+
+    <div class="max-w-4xl mx-auto">
+        <div class="flex justify-between items-center mb-10">
+            <div>
+                <h1 class="text-3xl font-black italic uppercase tracking-tighter">Master <span class="text-[#00e676]">Settings</span></h1>
+                <p class="text-gray-500 text-xs font-bold uppercase tracking-widest mt-1">Control A to Z Site Configuration</p>
+            </div>
+            <a href="admin-dashboard.html" class="h-12 w-12 bg-[#1e2632] rounded-2xl flex items-center justify-center border border-gray-800 hover:text-[#00e676] transition">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+        </div>
+
+        <form id="settingsForm" class="space-y-6">
+            <div class="config-card">
+                <h2 class="text-[#00e676] font-black uppercase text-xs tracking-[3px] mb-6 flex items-center gap-2">
+                    <i class="fas fa-coins"></i> Reward Configuration
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="text-[10px] font-black text-gray-500 uppercase ml-1 tracking-widest">Daily Bonus ($)</label>
+                        <input type="number" step="0.001" id="dailyBonus" required>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black text-gray-500 uppercase ml-1 tracking-widest">Min. Withdrawal ($)</label>
+                        <input type="number" step="0.1" id="minWithdraw" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="config-card">
+                <h2 class="text-blue-500 font-black uppercase text-xs tracking-[3px] mb-6 flex items-center gap-2">
+                    <i class="fas fa-tasks"></i> Task Rates
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="text-[10px] font-black text-gray-500 uppercase ml-1 tracking-widest">Captcha Reward ($)</label>
+                        <input type="number" step="0.001" id="captchaReward" required>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-black text-gray-500 uppercase ml-1 tracking-widest">Spin Reward Max ($)</label>
+                        <input type="number" step="0.01" id="spinMax" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="config-card">
+                <h2 class="text-yellow-500 font-black uppercase text-xs tracking-[3px] mb-6 flex items-center gap-2">
+                    <i class="fas fa-shield-alt"></i> System Control
+                </h2>
+                <div class="flex items-center justify-between bg-black/20 p-4 rounded-2xl border border-gray-800">
+                    <div>
+                        <p class="font-bold text-sm">Maintenance Mode</p>
+                        <p class="text-[10px] text-gray-500 uppercase">Block user access temporarily</p>
+                    </div>
+                    <input type="checkbox" id="maintenanceMode" class="w-6 h-6 accent-[#00e676]">
+                </div>
+            </div>
+
+            <button type="submit" class="w-full bg-[#00e676] text-black font-black py-5 rounded-2xl text-lg tracking-widest uppercase italic shadow-lg hover:scale-[1.02] active:scale-95 transition-all">
+                Save Global Changes
+            </button>
+        </form>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDgYMAl2aHN4jRewz5byM98psQK6AK7wlo",
+            authDomain: "adcashglobal-efb58.firebaseapp.com",
+            projectId: "adcashglobal-efb58",
+            storageBucket: "adcashglobal-efb58.firebasestorage.app",
+            messagingSenderId: "749601861677",
+            appId: "1:749601861677:web:8a8d8da27be53d238f48a4"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // ১. কারেন্ট সেটিংস লোড করা
+        const settingsRef = doc(db, "system", "config");
+
+        async function loadSettings() {
+            const snap = await getDoc(settingsRef);
+            if (snap.exists()) {
+                const data = snap.data();
+                document.getElementById('dailyBonus').value = data.dailyBonus;
+                document.getElementById('minWithdraw').value = data.minWithdraw;
+                document.getElementById('captchaReward').value = data.captchaReward;
+                document.getElementById('spinMax').value = data.spinMax;
+                document.getElementById('maintenanceMode').checked = data.maintenance;
+            }
+        }
+
+        // ২. সেটিংস আপডেট করা
+        document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            btn.innerText = "UPDATING...";
+
+            try {
+                await setDoc(settingsRef, {
+                    dailyBonus: parseFloat(document.getElementById('dailyBonus').value),
+                    minWithdraw: parseFloat(document.getElementById('minWithdraw').value),
+                    captchaReward: parseFloat(document.getElementById('captchaReward').value),
+                    spinMax: parseFloat(document.getElementById('spinMax').value),
+                    maintenance: document.getElementById('maintenanceMode').checked,
+                    lastUpdated: new Date().toISOString()
+                });
+                alert("Global Settings Updated Successfully!");
+            } catch (error) {
+                alert("Error: " + error.message);
+            } finally {
+                btn.innerText = "SAVE GLOBAL CHANGES";
+            }
+        });
+
+        loadSettings();
+    </script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Tasks | Admin Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-[#05070a] text-white p-6 md:p-12 min-h-screen flex items-center justify-center">
+
+    <div class="w-full max-w-2xl bg-[#0f172a] p-8 md:p-12 rounded-[45px] border border-slate-800 shadow-2xl relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 blur-[80px]"></div>
+        
+        <header class="relative z-10 mb-10">
+            <h1 class="text-3xl font-black uppercase italic tracking-tighter text-blue-500">
+                <i class="fas fa-plus-circle mr-2"></i> Add <span class="text-white">New Task</span>
+            </h1>
+            <p class="text-slate-500 text-[10px] font-black uppercase tracking-[3px] mt-2">Create rewards for your users</p>
+        </header>
+        
+        <form id="taskForm" class="space-y-6 relative z-10">
+            <div class="space-y-2">
+                <label class="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2">Task Title / Name</label>
+                <input type="text" id="taskName" required placeholder="e.g. Watch 30s Video Ad" 
+                class="w-full bg-[#1e293b] p-5 rounded-2xl outline-none border border-slate-700 focus:border-blue-500 transition text-sm font-bold">
+            </div>
+            
+            <div class="space-y-2">
+                <label class="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2">Reward Amount ($)</label>
+                <input type="number" id="taskReward" step="0.0001" required placeholder="0.0050" 
+                class="w-full bg-[#1e293b] p-5 rounded-2xl outline-none border border-slate-700 focus:border-blue-500 transition text-sm font-black text-[#00e676]">
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-2">Task Link / URL (Optional)</label>
+                <input type="url" id="taskLink" placeholder="https://youtube.com/..." 
+                class="w-full bg-[#1e293b] p-5 rounded-2xl outline-none border border-slate-700 focus:border-blue-500 transition text-sm font-bold">
+            </div>
+            
+            <div class="pt-4">
+                <button type="submit" id="submitBtn" class="w-full bg-blue-600 text-white font-black py-5 rounded-2xl uppercase tracking-[4px] italic hover:bg-blue-500 hover:scale-[1.01] active:scale-95 transition shadow-lg shadow-blue-900/20">
+                    Publish Task Now
+                </button>
+                <a href="admin.html" class="block text-center text-slate-500 text-[10px] font-black uppercase mt-6 tracking-widest hover:text-white transition">
+                    <i class="fas fa-arrow-left mr-1"></i> Back to Control Panel
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <script type="module">
+        import { db } from './firebase-config.js';
+        import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const taskForm = document.getElementById('taskForm');
+        const submitBtn = document.getElementById('submitBtn');
+
+        taskForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const title = document.getElementById('taskName').value;
+            const reward = document.getElementById('taskReward').value;
+            const link = document.getElementById('taskLink').value || "";
+
+            submitBtn.disabled = true;
+            submitBtn.innerText = "PUBLISHING...";
+
+            try {
+                // ফায়ারবেস 'tasks' কালেকশনে ডাটা সেভ করা
+                await addDoc(collection(db, "tasks"), {
+                    title: title,
+                    reward: parseFloat(reward),
+                    link: link,
+                    status: "active",
+                    createdAt: serverTimestamp()
+                });
+
+                alert("টাস্ক সফলভাবে পাবলিশ হয়েছে!");
+                taskForm.reset(); // ইনপুট বক্স ক্লিয়ার করা
+                
+            } catch (error) {
+                console.error("Error adding task: ", error);
+                alert("ভুল হয়েছে: " + error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Publish Task Now";
+            }
+        });
+    </script>
+</body>
+</html>

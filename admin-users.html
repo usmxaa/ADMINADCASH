@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Users | Master Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0a0d15; color: white; font-family: 'Inter', sans-serif; }
+        .user-card { background: #1e2632; border: 1px solid #313d4f; transition: 0.3s; }
+        .user-card:hover { border-color: #00e676; box-shadow: 0 0 20px rgba(0, 230, 118, 0.1); }
+        .status-online { color: #00e676; font-size: 10px; text-transform: uppercase; font-weight: 900; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-6xl mx-auto">
+        <div class="flex justify-between items-center mb-10">
+            <div>
+                <h1 class="text-3xl font-black italic uppercase tracking-tighter">User <span class="text-[#00e676]">Management</span></h1>
+                <p class="text-gray-500 text-xs font-bold uppercase tracking-widest mt-1">Control all registered earners</p>
+            </div>
+            <a href="admin-dashboard.html" class="h-12 w-12 bg-[#1e2632] rounded-2xl flex items-center justify-center border border-gray-800 hover:text-[#00e676] transition">
+                <i class="fas fa-th-large"></i>
+            </a>
+        </div>
+
+        <div class="mb-8 relative">
+            <input type="text" id="userSearch" placeholder="Search by name or email..." 
+                   class="w-full bg-[#1e2632] border border-gray-800 rounded-2xl p-4 pl-12 text-sm outline-none focus:border-[#00e676] transition">
+            <i class="fas fa-search absolute left-5 top-5 text-gray-600"></i>
+        </div>
+
+        <div id="users-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="col-span-full text-center py-20 text-gray-600 font-bold uppercase tracking-[5px] animate-pulse">
+                Fetching User Database...
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDgYMAl2aHN4jRewz5byM98psQK6AK7wlo",
+            authDomain: "adcashglobal-efb58.firebaseapp.com",
+            projectId: "adcashglobal-efb58",
+            storageBucket: "adcashglobal-efb58.firebasestorage.app",
+            messagingSenderId: "749601861677",
+            appId: "1:749601861677:web:8a8d8da27be53d238f48a4"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // ১. সব ইউজার ডাটাবেস থেকে নিয়ে আসা
+        onSnapshot(collection(db, "users"), (snapshot) => {
+            const usersList = document.getElementById('users-list');
+            usersList.innerHTML = ""; // আগের ডাটা ক্লিয়ার
+
+            snapshot.forEach((userDoc) => {
+                const user = userDoc.data();
+                const userId = userDoc.id;
+
+                const card = `
+                    <div class="user-card p-6 rounded-[35px] relative overflow-hidden">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="font-black text-lg leading-none mb-1">${user.name || 'Unknown'}</h3>
+                                <p class="text-[10px] text-gray-500 font-bold uppercase tracking-tighter">${user.email}</p>
+                            </div>
+                            <span class="status-online">● Active</span>
+                        </div>
+
+                        <div class="bg-black/20 rounded-2xl p-4 mb-6">
+                            <p class="text-[9px] text-gray-500 font-black uppercase tracking-widest mb-1">Current Balance</p>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[#00e676] text-2xl font-black italic">$${(user.balance || 0).toFixed(3)}</span>
+                                <button onclick="editBalance('${userId}', ${user.balance})" class="text-gray-600 hover:text-white transition">
+                                    <i class="fas fa-edit text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="text-center bg-gray-900/50 p-2 rounded-xl border border-gray-800">
+                                <p class="text-[8px] text-gray-600 font-black uppercase">Tasks</p>
+                                <p class="font-bold text-xs">${user.totalTasks || 0}</p>
+                            </div>
+                            <div class="text-center bg-gray-900/50 p-2 rounded-xl border border-gray-800">
+                                <p class="text-[8px] text-gray-600 font-black uppercase">Refers</p>
+                                <p class="font-bold text-xs">${user.dailyStreak || 0} Days</p>
+                            </div>
+                        </div>
+
+                        <button onclick="deleteUser('${userId}')" class="mt-4 w-full py-3 bg-red-500/10 text-red-500 rounded-xl text-[10px] font-black uppercase hover:bg-red-500 hover:text-white transition">
+                            Terminate User
+                        </button>
+                    </div>
+                `;
+                usersList.innerHTML += card;
+            });
+        });
+
+        // ২. ব্যালেন্স এডিট করার ফাংশন
+        window.editBalance = async (uid, oldBalance) => {
+            const newBalance = prompt("Enter new balance for this user:", oldBalance);
+            if (newBalance !== null && !isNaN(newBalance)) {
+                try {
+                    await updateDoc(doc(db, "users", uid), {
+                        balance: parseFloat(newBalance)
+                    });
+                    alert("Balance Updated Successfully!");
+                } catch (e) { alert("Error updating balance!"); }
+            }
+        };
+
+        // ৩. ইউজার ডিলিট করার ফাংশন
+        window.deleteUser = async (uid) => {
+            if (confirm("Are you sure? This user will lose everything!")) {
+                try {
+                    await deleteDoc(doc(db, "users", uid));
+                    alert("User Terminated.");
+                } catch (e) { alert("Error deleting user!"); }
+            }
+        };
+
+    </script>
+</body>
+</html>

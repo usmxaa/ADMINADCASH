@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Control | AdCashGlobal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #05070a; color: white; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        .admin-card { background: #0f172a; border: 1px solid #1e293b; transition: 0.3s; }
+        .admin-card:hover { border-color: #00e676; box-shadow: 0 10px 30px rgba(0, 230, 118, 0.05); }
+        .status-online { color: #00e676; }
+        input, select { background: #1e293b !important; border: 1px solid #334155 !important; color: white !important; }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+    </style>
+</head>
+<body class="flex min-h-screen">
+
+    <nav class="w-64 bg-[#0f172a] border-r border-slate-800 p-6 space-y-8 hidden md:block sticky top-0 h-screen">
+        <div class="text-xl font-black italic uppercase tracking-tighter text-[#00e676]">
+            <i class="fas fa-user-shield mr-2"></i> Master Admin
+        </div>
+        <div class="space-y-4">
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Main Menu</p>
+            <a href="admin.html" class="flex items-center gap-3 text-sm font-bold text-[#00e676] bg-green-500/10 p-3 rounded-xl"><i class="fas fa-chart-pie"></i> Overview</a>
+            <a href="admin-users.html" class="flex items-center gap-3 text-sm font-bold text-slate-400 hover:text-white p-3 transition"><i class="fas fa-users"></i> Users Manage</a>
+            <a href="admin-withdrawals.html" class="flex items-center gap-3 text-sm font-bold text-slate-400 hover:text-white p-3 transition"><i class="fas fa-money-check-alt"></i> Withdrawals</a>
+            <a href="admin-tasks.html" class="flex items-center gap-3 text-sm font-bold text-slate-400 hover:text-white p-3 transition"><i class="fas fa-plus-circle"></i> Add Tasks</a>
+            <a href="admin-settings.html" class="flex items-center gap-3 text-sm font-bold text-slate-400 hover:text-white p-3 transition"><i class="fas fa-cog"></i> Site Settings</a>
+        </div>
+    </nav>
+
+    <main class="flex-1 p-6 md:p-10 space-y-10">
+        
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <h1 class="text-3xl font-black italic uppercase tracking-tighter">System <span class="text-[#00e676]">A-to-Z</span> Control</h1>
+                <p class="text-slate-500 text-[10px] font-black uppercase tracking-widest">Welcome back, Super Admin</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Server: <span class="status-online animate-pulse">Online</span></span>
+                <button onclick="logoutAdmin()" class="bg-red-500/10 text-red-500 px-6 py-2.5 rounded-xl text-xs font-black uppercase border border-red-500/20 hover:bg-red-500 hover:text-white transition">Logout</button>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div class="admin-card p-8 rounded-[35px]">
+                <p class="text-slate-500 text-[10px] font-black uppercase mb-2 tracking-widest">Total Users</p>
+                <h3 id="statTotalUsers" class="text-4xl font-black italic tracking-tighter">0</h3>
+            </div>
+            <div class="admin-card p-8 rounded-[35px]">
+                <p class="text-slate-500 text-[10px] font-black uppercase mb-2 tracking-widest">User Balances</p>
+                <h3 id="statTotalBalance" class="text-4xl font-black italic text-[#00e676] tracking-tighter">$0.00</h3>
+            </div>
+            <div class="admin-card p-8 rounded-[35px] border-t-4 border-yellow-500">
+                <p class="text-slate-500 text-[10px] font-black uppercase mb-2 tracking-widest">Pending Payouts</p>
+                <h3 id="statPendingWithdraw" class="text-4xl font-black italic text-yellow-500 tracking-tighter">0</h3>
+            </div>
+            <div class="admin-card p-8 rounded-[35px] border-t-4 border-blue-500">
+                <p class="text-slate-500 text-[10px] font-black uppercase mb-2 tracking-widest">Active Tasks</p>
+                <h3 id="statActiveTasks" class="text-4xl font-black italic text-blue-500 tracking-tighter">0</h3>
+            </div>
+        </div>
+
+        <section class="admin-card rounded-[40px] overflow-hidden shadow-2xl">
+            <div class="p-8 border-b border-slate-800 flex justify-between items-center bg-slate-900/30">
+                <h3 class="font-black uppercase italic tracking-widest text-sm">Quick User Overview</h3>
+                <a href="admin-users.html" class="text-[10px] font-black text-[#00e676] uppercase underline">View All Users</a>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-900/50 text-slate-500 uppercase text-[10px] font-black">
+                        <tr>
+                            <th class="p-6">User Email</th>
+                            <th class="p-6">Balance</th>
+                            <th class="p-6">Status</th>
+                            <th class="p-6 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="quickUserList">
+                        </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, query, where, doc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDgYMAl2aHN4jRewz5byM98psQK6AK7wlo",
+            authDomain: "adcashglobal-efb58.firebaseapp.com",
+            projectId: "adcashglobal-efb58",
+            storageBucket: "adcashglobal-efb58.firebasestorage.app",
+            messagingSenderId: "749601861677",
+            appId: "1:749601861677:web:8a8d8da27be53d238f48a4"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // ১. সিকিউরিটি: লগইন চেক
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                window.location.href = "index.html";
+            }
+        });
+
+        // ২. রিয়েল-টাইম স্ট্যাটস (Stats) আপডেট
+        onSnapshot(collection(db, "users"), (snapshot) => {
+            document.getElementById('statTotalUsers').innerText = snapshot.size;
+            let totalVal = 0;
+            let userHTML = "";
+            
+            snapshot.docs.slice(0, 5).forEach(doc => {
+                const u = doc.data();
+                totalVal += u.balance || 0;
+                userHTML += `
+                    <tr class="border-b border-slate-800/50 hover:bg-slate-800/30 transition">
+                        <td class="p-6 font-bold text-slate-300">${u.email}</td>
+                        <td class="p-6 text-[#00e676] font-black italic">$${(u.balance || 0).toFixed(4)}</td>
+                        <td class="p-6"><span class="bg-green-500/10 text-green-500 text-[8px] px-3 py-1 rounded-full uppercase font-black">Member</span></td>
+                        <td class="p-6 text-right">
+                            <button onclick="quickAdd('${doc.id}')" class="h-9 w-9 bg-blue-500/10 text-blue-500 rounded-xl hover:bg-blue-500 hover:text-white transition"><i class="fas fa-plus text-xs"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+            document.getElementById('statTotalBalance').innerText = "$" + totalVal.toFixed(2);
+            document.getElementById('quickUserList').innerHTML = userHTML;
+        });
+
+        // ৩. উইথড্র ও টাস্ক কাউন্ট চেক
+        onSnapshot(query(collection(db, "withdrawals"), where("status", "==", "pending")), (snap) => {
+            document.getElementById('statPendingWithdraw').innerText = snap.size;
+        });
+        onSnapshot(collection(db, "tasks"), (snap) => {
+            document.getElementById('statActiveTasks').innerText = snap.size;
+        });
+
+        // ৪. কুইক ব্যালেন্স অ্যাড ফাংশন
+        window.quickAdd = async (id) => {
+            let amt = prompt("এমাউন্ট দিন ($):", "0.10");
+            if(amt) {
+                const userRef = doc(db, "users", id);
+                await updateDoc(userRef, { balance: increment(parseFloat(amt)) });
+                alert("Updated!");
+            }
+        };
+
+        // ৫. লগআউট
+        window.logoutAdmin = () => {
+            signOut(auth).then(() => { window.location.href = "index.html"; });
+        };
+
+    </script>
+</body>
+</html>

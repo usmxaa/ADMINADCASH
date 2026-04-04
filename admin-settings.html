@@ -9,8 +9,16 @@
     <style>
         body { background-color: #0a0d15; color: white; font-family: 'Inter', sans-serif; }
         .config-card { background: #1e2632; border: 1px solid #313d4f; border-radius: 30px; padding: 25px; transition: 0.3s; }
-        .config-card:focus-within { border-color: #00e676; box-shadow: 0 0 20px rgba(0, 230, 118, 0.1); }
-        input { background: #131924; border: 1px solid #313d4f; color: white; border-radius: 12px; padding: 12px; outline: none; width: 100%; font-weight: bold; }
+        .config-card:focus-within { border-color: #00e676; box-shadow: 0 0 20px rgba(0, 230, 118, 0.05); }
+        input[type="number"] { background: #131924; border: 1px solid #313d4f; color: white; border-radius: 12px; padding: 12px; outline: none; width: 100%; font-weight: bold; transition: 0.2s; }
+        input:focus { border-color: #00e676; }
+        /* Toggle Switch Style */
+        .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #313d4f; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #00e676; }
+        input:checked + .slider:before { transform: translateX(24px); }
     </style>
 </head>
 <body class="p-6 md:p-12">
@@ -21,7 +29,7 @@
                 <h1 class="text-3xl font-black italic uppercase tracking-tighter">Master <span class="text-[#00e676]">Settings</span></h1>
                 <p class="text-gray-500 text-xs font-bold uppercase tracking-widest mt-1">Control A to Z Site Configuration</p>
             </div>
-            <a href="admin-dashboard.html" class="h-12 w-12 bg-[#1e2632] rounded-2xl flex items-center justify-center border border-gray-800 hover:text-[#00e676] transition">
+            <a href="admin.html" class="h-12 w-12 bg-[#1e2632] rounded-2xl flex items-center justify-center border border-gray-800 hover:text-[#00e676] transition shadow-lg">
                 <i class="fas fa-arrow-left"></i>
             </a>
         </div>
@@ -34,11 +42,11 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="text-[10px] font-black text-gray-500 uppercase ml-1 tracking-widest">Daily Bonus ($)</label>
-                        <input type="number" step="0.001" id="dailyBonus" required>
+                        <input type="number" step="0.0001" id="dailyBonus" placeholder="0.01">
                     </div>
                     <div>
                         <label class="text-[10px] font-black text-gray-500 uppercase ml-1 tracking-widest">Min. Withdrawal ($)</label>
-                        <input type="number" step="0.1" id="minWithdraw" required>
+                        <input type="number" step="0.1" id="minWithdraw" placeholder="1.0">
                     </div>
                 </div>
             </div>
@@ -50,11 +58,11 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="text-[10px] font-black text-gray-500 uppercase ml-1 tracking-widest">Captcha Reward ($)</label>
-                        <input type="number" step="0.001" id="captchaReward" required>
+                        <input type="number" step="0.0001" id="captchaReward" placeholder="0.002">
                     </div>
                     <div>
-                        <label class="text-[10px] font-black text-gray-500 uppercase ml-1 tracking-widest">Spin Reward Max ($)</label>
-                        <input type="number" step="0.01" id="spinMax" required>
+                        <label class="text-[10px] font-black text-gray-500 uppercase ml-1 tracking-widest">Spin Jackpot ($)</label>
+                        <input type="number" step="0.0001" id="spinMax" placeholder="1.0">
                     </div>
                 </div>
             </div>
@@ -63,17 +71,20 @@
                 <h2 class="text-yellow-500 font-black uppercase text-xs tracking-[3px] mb-6 flex items-center gap-2">
                     <i class="fas fa-shield-alt"></i> System Control
                 </h2>
-                <div class="flex items-center justify-between bg-black/20 p-4 rounded-2xl border border-gray-800">
+                <div class="flex items-center justify-between bg-black/20 p-5 rounded-2xl border border-gray-800">
                     <div>
                         <p class="font-bold text-sm">Maintenance Mode</p>
-                        <p class="text-[10px] text-gray-500 uppercase">Block user access temporarily</p>
+                        <p class="text-[10px] text-gray-500 uppercase tracking-wider">Block user access temporarily</p>
                     </div>
-                    <input type="checkbox" id="maintenanceMode" class="w-6 h-6 accent-[#00e676]">
+                    <label class="switch">
+                        <input type="checkbox" id="maintenanceMode">
+                        <span class="slider"></span>
+                    </label>
                 </div>
             </div>
 
-            <button type="submit" class="w-full bg-[#00e676] text-black font-black py-5 rounded-2xl text-lg tracking-widest uppercase italic shadow-lg hover:scale-[1.02] active:scale-95 transition-all">
-                Save Global Changes
+            <button type="submit" id="saveBtn" class="w-full bg-[#00e676] text-black font-black py-5 rounded-2xl text-lg tracking-widest uppercase italic shadow-xl hover:bg-[#00c968] hover:scale-[1.01] active:scale-95 transition-all">
+                Update System Config
             </button>
         </form>
     </div>
@@ -93,42 +104,47 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-
-        // ১. কারেন্ট সেটিংস লোড করা
         const settingsRef = doc(db, "system", "config");
 
+        // ১. ডাটা লোড করা
         async function loadSettings() {
-            const snap = await getDoc(settingsRef);
-            if (snap.exists()) {
-                const data = snap.data();
-                document.getElementById('dailyBonus').value = data.dailyBonus;
-                document.getElementById('minWithdraw').value = data.minWithdraw;
-                document.getElementById('captchaReward').value = data.captchaReward;
-                document.getElementById('spinMax').value = data.spinMax;
-                document.getElementById('maintenanceMode').checked = data.maintenance;
-            }
+            try {
+                const snap = await getDoc(settingsRef);
+                if (snap.exists()) {
+                    const data = snap.data();
+                    document.getElementById('dailyBonus').value = data.dailyBonus || 0;
+                    document.getElementById('minWithdraw').value = data.minWithdraw || 0;
+                    document.getElementById('captchaReward').value = data.captchaReward || 0;
+                    document.getElementById('spinMax').value = data.spinMax || 0;
+                    document.getElementById('maintenanceMode').checked = data.maintenance || false;
+                }
+            } catch (e) { console.error("Error loading settings:", e); }
         }
 
-        // ২. সেটিংস আপডেট করা
+        // ২. ডাটা সেভ করা
         document.getElementById('settingsForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const btn = e.target.querySelector('button');
-            btn.innerText = "UPDATING...";
+            const btn = document.getElementById('saveBtn');
+            const originalText = btn.innerText;
+            btn.innerText = "SAVING CHANGES...";
+            btn.disabled = true;
 
             try {
                 await setDoc(settingsRef, {
-                    dailyBonus: parseFloat(document.getElementById('dailyBonus').value),
-                    minWithdraw: parseFloat(document.getElementById('minWithdraw').value),
-                    captchaReward: parseFloat(document.getElementById('captchaReward').value),
-                    spinMax: parseFloat(document.getElementById('spinMax').value),
+                    dailyBonus: parseFloat(document.getElementById('dailyBonus').value) || 0,
+                    minWithdraw: parseFloat(document.getElementById('minWithdraw').value) || 0,
+                    captchaReward: parseFloat(document.getElementById('captchaReward').value) || 0,
+                    spinMax: parseFloat(document.getElementById('spinMax').value) || 0,
                     maintenance: document.getElementById('maintenanceMode').checked,
-                    lastUpdated: new Date().toISOString()
-                });
-                alert("Global Settings Updated Successfully!");
+                    lastUpdated: new Date().toLocaleString()
+                }, { merge: true });
+
+                alert("Settings Synchronized Successfully!");
             } catch (error) {
-                alert("Error: " + error.message);
+                alert("Firestore Error: " + error.message);
             } finally {
-                btn.innerText = "SAVE GLOBAL CHANGES";
+                btn.innerText = originalText;
+                btn.disabled = false;
             }
         });
 

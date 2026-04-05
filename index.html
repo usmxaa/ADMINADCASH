@@ -79,7 +79,7 @@
                         </tr>
                     </thead>
                     <tbody id="quickUserList">
-                        <tr><td colspan="4" class="p-6 text-center text-slate-500">Loading users...</td></tr>
+                        <tr><td colspan="4" class="p-6 text-center text-slate-500 italic">Connecting to database...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -109,78 +109,91 @@
             if (!user) window.location.href = "index.html";
         });
 
-        // ২. ইউজার ডাটা এবং মোট ব্যালেন্স (Fix: createdAt ব্যবহার করা হয়েছে)
-        // নোট: যদি এটি এরর দেয় তবে অর্ডারবাই অংশটুকু সাময়িকভাবে মুছে দিন
-        const userQuery = query(collection(db, "users"), orderBy("createdAt", "desc"));
-        
-        onSnapshot(userQuery, (snapshot) => {
-            document.getElementById('statTotalUsers').innerText = snapshot.size;
-            
-            let totalLiability = 0;
-            let userHTML = "";
-            
-            snapshot.docs.forEach((docSnap, index) => {
-                const u = docSnap.data();
-                totalLiability += (parseFloat(u.balance) || 0);
+        // ২. ইউজার লোডিং ফাংশন (ইনডেক্সিং এরর হ্যান্ডেল সহ)
+        const fetchUsers = (queryRef) => {
+            onSnapshot(queryRef, (snapshot) => {
+                document.getElementById('statTotalUsers').innerText = snapshot.size;
+                
+                let totalLiability = 0;
+                let userHTML = "";
+                
+                snapshot.docs.forEach((docSnap, index) => {
+                    const u = docSnap.data();
+                    const bal = parseFloat(u.balance || 0);
+                    totalLiability += bal;
 
-                // প্রথম ৫ জন টেবিলে দেখানো
-                if (index < 5) {
-                    userHTML += `
-                        <tr class="border-b border-slate-800/50 hover:bg-slate-800/30 transition">
-                            <td class="p-6 font-bold text-slate-300">
-                                <span class="block">${u.name || 'Anonymous'}</span>
-                                <span class="text-[10px] text-slate-500 font-normal italic">${u.email}</span>
-                            </td>
-                            <td class="p-6 text-[#00e676] font-black italic">$${(u.balance || 0).toFixed(4)}</td>
-                            <td class="p-6"><span class="bg-green-500/10 text-green-500 text-[8px] px-3 py-1 rounded-full uppercase font-black">${u.status || 'Active'}</span></td>
-                            <td class="p-6 text-right">
-                                <button onclick="window.quickAdd('${docSnap.id}')" class="h-9 w-9 bg-blue-500/10 text-blue-500 rounded-xl hover:bg-blue-500 hover:text-white transition">
-                                    <i class="fas fa-hand-holding-usd text-xs"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    `;
+                    if (index < 5) {
+                        userHTML += `
+                            <tr class="border-b border-slate-800/50 hover:bg-slate-800/30 transition">
+                                <td class="p-6 font-bold text-slate-300">
+                                    <span class="block">${u.name || 'Anonymous'}</span>
+                                    <span class="text-[10px] text-slate-500 font-normal italic">${u.email}</span>
+                                </td>
+                                <td class="p-6 text-[#00e676] font-black italic">$${bal.toFixed(4)}</td>
+                                <td class="p-6">
+                                    <span class="bg-green-500/10 text-green-500 text-[8px] px-3 py-1 rounded-full uppercase font-black">
+                                        ${u.status || 'Active'}
+                                    </span>
+                                </td>
+                                <td class="p-6 text-right">
+                                    <button onclick="window.quickAdd('${docSnap.id}')" class="h-9 w-9 bg-blue-500/10 text-blue-500 rounded-xl hover:bg-blue-500 hover:text-white transition">
+                                        <i class="fas fa-hand-holding-usd text-xs"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                });
+
+                document.getElementById('statTotalBalance').innerText = "$" + totalLiability.toFixed(2);
+                document.getElementById('quickUserList').innerHTML = userHTML || '<tr><td colspan="4" class="p-6 text-center text-slate-500">No users found.</td></tr>';
+            }, (error) => {
+                console.error("Firestore Error:", error);
+                // যদি সর্টিং এরর দেয় (Index missing), তবে সর্টিং ছাড়াই ট্রাই করো
+                if (error.code === 'failed-precondition') {
+                    console.warn("Sorting failed, trying without order.");
+                    fetchUsers(collection(db, "users"));
+                } else {
+                    document.getElementById('quickUserList').innerHTML = `<tr><td colspan="4" class="p-6 text-center text-red-500">Error: ${error.message}</td></tr>`;
                 }
             });
+        };
 
-            document.getElementById('statTotalBalance').innerText = "$" + totalLiability.toFixed(2);
-            document.getElementById('quickUserList').innerHTML = userHTML || '<tr><td colspan="4" class="p-6 text-center text-slate-500">No members yet.</td></tr>';
-        }, (error) => {
-            console.error("Firestore Error:", error.message);
-            // যদি ইনডেক্সিং এরর থাকে তবে নিচের লাইনে শুধু কালেকশন দিয়ে ডাটা আনা হবে
-            if(error.message.includes("requires an index")) {
-                alert("Please check F12 Console for Firebase Index Link!");
-            }
-        });
+        // সর্টিং ট্রাই করা হচ্ছে (createdAt ফিল্ড অনুযায়ী)
+        fetchUsers(query(collection(db, "users"), orderBy("createdAt", "desc")));
 
-        // ৩. পেন্ডিং উইথড্র এবং টাস্কস
+        // ৩. পেন্ডিং উইথড্র কাউন্ট
         onSnapshot(query(collection(db, "withdrawals"), where("status", "==", "pending")), (snap) => {
             document.getElementById('statPendingWithdraw').innerText = snap.size;
         });
+
+        // ৪. লাইভ টাস্ক কাউন্ট
         onSnapshot(collection(db, "tasks"), (snap) => {
             document.getElementById('statActiveTasks').innerText = snap.size;
         });
 
-        // ৪. কুইক ব্যালেন্স অ্যাড (গ্লোবাল ফাংশন)
-        window.quickAdd = async (id) => {
-            let amt = prompt("Enter amount to add ($):", "1.00");
-            if(amt && !isNaN(amt)) {
+        // ৫. গ্লোবাল কুইক অ্যাড ফাংশন
+        window.quickAdd = async (userId) => {
+            let amount = prompt("Amount to add ($):", "0.50");
+            if(amount && !isNaN(amount)) {
                 try {
-                    const userRef = doc(db, "users", id);
-                    await updateDoc(userRef, { balance: increment(parseFloat(amt)) });
-                    alert("Balance updated!");
+                    await updateDoc(doc(db, "users", userId), {
+                        balance: increment(parseFloat(amount))
+                    });
+                    alert("Balance updated successfully!");
                 } catch (e) {
                     alert("Error: " + e.message);
                 }
             }
         };
 
-        // ৫. লগআউট
+        // ৬. লগআউট ফাংশন
         window.logoutAdmin = () => {
-            if(confirm("Exit Master Admin?")) {
+            if(confirm("Confirm Logout?")) {
                 signOut(auth).then(() => { window.location.href = "index.html"; });
             }
         };
+
     </script>
 </body>
 </html>
